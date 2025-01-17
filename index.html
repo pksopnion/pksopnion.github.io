@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotação de Moedas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        #cotacao {
+            margin: 20px auto;
+            font-size: 18px;
+        }
+        #historico {
+            width: 80%;
+            margin: 20px auto;
+        }
+        select, button {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cotação de Moedas em Tempo Real</h1>
+    <div>
+        <label for="moeda">Selecione a moeda:</label>
+        <select id="moeda">
+            <option value="USD-BRL">Dólar (USD)</option>
+            <option value="EUR-BRL">Euro (EUR)</option>
+            <option value="GBP-BRL">Libra (GBP)</option>
+            <option value="JPY-BRL">Iene (JPY)</option>
+            <option value="ARS-BRL">Peso Argentino (ARS)</option>
+        </select>
+    </div>
+    <div id="cotacao">
+        <p id="precoAtual">Preço atual: Carregando...</p>
+        <p id="preco25Dez">Preço em 25/12/2024: Carregando...</p>
+    </div>
+    <canvas id="historico"></canvas>
+
+    <script>
+        const apiUrl = "https://economia.awesomeapi.com.br/json";
+
+        async function obterPrecoAtual(moeda) {
+            const response = await fetch(`${apiUrl}/last/${moeda}`);
+            if (response.ok) {
+                const data = await response.json();
+                return parseFloat(data[moeda.replace('-', '')].bid);
+            }
+            throw new Error("Erro ao obter preço atual.");
+        }
+
+        async function obterPrecoPorData(moeda, data) {
+            const response = await fetch(`${apiUrl}/daily/${moeda}/365`);
+            if (response.ok) {
+                const dados = await response.json();
+                for (const item of dados) {
+                    const dataItem = new Date(item.timestamp * 1000).toLocaleDateString('pt-BR');
+                    if (dataItem === data) {
+                        return parseFloat(item.bid);
+                    }
+                }
+                return "Não disponível";
+            }
+            throw new Error("Erro ao obter preço por data.");
+        }
+
+        async function obterHistorico(moeda) {
+            const response = await fetch(`${apiUrl}/daily/${moeda}/30`);
+            if (response.ok) {
+                const data = await response.json();
+                return data.reverse().map(item => ({
+                    data: new Date(item.timestamp * 1000).toLocaleDateString('pt-BR'),
+                    preco: parseFloat(item.bid)
+                }));
+            }
+            throw new Error("Erro ao obter histórico.");
+        }
+
+        function atualizarGrafico(historico) {
+            const ctx = document.getElementById('historico').getContext('2d');
+            const labels = historico.map(item => item.data);
+            const data = historico.map(item => item.preco);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Histórico de Preços (R$)',
+                        data,
+                        borderColor: 'blue',
+                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Data' } },
+                        y: { title: { display: true, text: 'Preço (R$)' } }
+                    }
+                }
+            });
+        }
+
+        async function atualizarCotacao() {
+            const moeda = document.getElementById('moeda').value;
+
+            try {
+                const precoAtual = await obterPrecoAtual(moeda);
+                document.getElementById('precoAtual').innerText = `Preço atual: R$ ${precoAtual.toFixed(2)}`;
+
+                const preco25Dez = await obterPrecoPorData(moeda, '25/12/2024');
+                document.getElementById('preco25Dez').innerText = 
+                    `Preço em 25/12/2024: ${preco25Dez !== "Não disponível" ? `R$ ${preco25Dez.toFixed(2)}` : "Não disponível"}`;
+
+                const historico = await obterHistorico(moeda);
+                atualizarGrafico(historico);
+            } catch (error) {
+                console.error(error);
+                document.getElementById('precoAtual').innerText = "Erro ao carregar dados.";
+            }
+        }
+
+        document.getElementById('moeda').addEventListener('change', atualizarCotacao);
+
+        // Inicialização
+        atualizarCotacao();
+    </script>
+</body>
+</html>
