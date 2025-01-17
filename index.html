@@ -53,39 +53,61 @@
         const apiUrl = "https://economia.awesomeapi.com.br/json";
 
         async function obterPrecoAtual(moeda) {
-            const response = await fetch(`${apiUrl}/last/${moeda}`);
-            if (response.ok) {
-                const data = await response.json();
-                return parseFloat(data[moeda.replace('-', '')].bid);
+            try {
+                const response = await fetch(`${apiUrl}/last/${moeda}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data[moeda.replace('-', '')]) {
+                        return parseFloat(data[moeda.replace('-', '')].bid);
+                    } else {
+                        throw new Error("Formato de dados inesperado.");
+                    }
+                } else {
+                    throw new Error("Erro na resposta da API.");
+                }
+            } catch (error) {
+                console.error(error);
+                return "Erro";
             }
-            throw new Error("Erro ao obter preço atual.");
         }
 
         async function obterPrecoPorData(moeda, data) {
-            const response = await fetch(`${apiUrl}/daily/${moeda}/365`);
-            if (response.ok) {
-                const dados = await response.json();
-                for (const item of dados) {
-                    const dataItem = new Date(item.timestamp * 1000).toLocaleDateString('pt-BR');
-                    if (dataItem === data) {
-                        return parseFloat(item.bid);
+            try {
+                const response = await fetch(`${apiUrl}/daily/${moeda}/365`);
+                if (response.ok) {
+                    const dados = await response.json();
+                    for (const item of dados) {
+                        const dataItem = new Date(item.timestamp * 1000).toLocaleDateString('pt-BR');
+                        if (dataItem === data) {
+                            return parseFloat(item.bid);
+                        }
                     }
+                    return "Não disponível";
+                } else {
+                    throw new Error("Erro na resposta da API.");
                 }
-                return "Não disponível";
+            } catch (error) {
+                console.error(error);
+                return "Erro";
             }
-            throw new Error("Erro ao obter preço por data.");
         }
 
         async function obterHistorico(moeda) {
-            const response = await fetch(`${apiUrl}/daily/${moeda}/30`);
-            if (response.ok) {
-                const data = await response.json();
-                return data.reverse().map(item => ({
-                    data: new Date(item.timestamp * 1000).toLocaleDateString('pt-BR'),
-                    preco: parseFloat(item.bid)
-                }));
+            try {
+                const response = await fetch(`${apiUrl}/daily/${moeda}/30`);
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.reverse().map(item => ({
+                        data: new Date(item.timestamp * 1000).toLocaleDateString('pt-BR'),
+                        preco: parseFloat(item.bid)
+                    }));
+                } else {
+                    throw new Error("Erro na resposta da API.");
+                }
+            } catch (error) {
+                console.error(error);
+                return [];
             }
-            throw new Error("Erro ao obter histórico.");
         }
 
         function atualizarGrafico(historico) {
@@ -130,7 +152,11 @@
                     `Preço em 25/12/2024: ${preco25Dez !== "Não disponível" ? `R$ ${preco25Dez.toFixed(2)}` : "Não disponível"}`;
 
                 const historico = await obterHistorico(moeda);
-                atualizarGrafico(historico);
+                if (historico.length > 0) {
+                    atualizarGrafico(historico);
+                } else {
+                    console.error("Histórico vazio.");
+                }
             } catch (error) {
                 console.error(error);
                 document.getElementById('precoAtual').innerText = "Erro ao carregar dados.";
