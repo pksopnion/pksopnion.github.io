@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cotação de Moedas</title>
+    <title>Cotação do Dólar</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
@@ -24,25 +24,10 @@
             width: 80%;
             margin: 20px auto;
         }
-        select, button {
-            padding: 10px;
-            font-size: 16px;
-            margin: 10px;
-        }
     </style>
 </head>
 <body>
-    <h1>Cotação de Moedas em Tempo Real</h1>
-    <div>
-        <label for="moeda">Selecione a moeda:</label>
-        <select id="moeda">
-            <option value="USD-BRL">Dólar (USD)</option>
-            <option value="EUR-BRL">Euro (EUR)</option>
-            <option value="GBP-BRL">Libra (GBP)</option>
-            <option value="JPY-BRL">Iene (JPY)</option>
-            <option value="ARS-BRL">Peso Argentino (ARS)</option>
-        </select>
-    </div>
+    <h1>Cotação do Dólar (USD-BRL)</h1>
     <div id="cotacao">
         <p id="precoAtual">Preço atual: Carregando...</p>
         <p id="preco25Dez">Preço em 25/12/2024: Carregando...</p>
@@ -51,8 +36,9 @@
 
     <script>
         const apiUrl = "https://economia.awesomeapi.com.br/json";
+        const moeda = "USD-BRL";
 
-        async function obterPrecoAtual(moeda) {
+        async function obterPrecoAtual() {
             try {
                 const response = await fetch(`${apiUrl}/last/${moeda}`);
                 if (response.ok) {
@@ -71,9 +57,9 @@
             }
         }
 
-        async function obterPrecoPorData(moeda, data) {
+        async function obterPrecoPorData(data) {
             try {
-                const response = await fetch(`${apiUrl}/daily/${moeda}/365`);
+                const response = await fetch(`${apiUrl}/daily/${moeda}/1825`); // Últimos 5 anos
                 if (response.ok) {
                     const dados = await response.json();
                     for (const item of dados) {
@@ -92,9 +78,9 @@
             }
         }
 
-        async function obterHistorico(moeda) {
+        async function obterHistorico() {
             try {
-                const response = await fetch(`${apiUrl}/daily/${moeda}/30`);
+                const response = await fetch(`${apiUrl}/daily/${moeda}/1825`); // Últimos 5 anos
                 if (response.ok) {
                     const data = await response.json();
                     return data.reverse().map(item => ({
@@ -141,17 +127,15 @@
         }
 
         async function atualizarCotacao() {
-            const moeda = document.getElementById('moeda').value;
-
             try {
-                const precoAtual = await obterPrecoAtual(moeda);
+                const precoAtual = await obterPrecoAtual();
                 document.getElementById('precoAtual').innerText = `Preço atual: R$ ${precoAtual.toFixed(2)}`;
 
-                const preco25Dez = await obterPrecoPorData(moeda, '25/12/2024');
+                const preco25Dez = await obterPrecoPorData('25/12/2024');
                 document.getElementById('preco25Dez').innerText = 
                     `Preço em 25/12/2024: ${preco25Dez !== "Não disponível" ? `R$ ${preco25Dez.toFixed(2)}` : "Não disponível"}`;
 
-                const historico = await obterHistorico(moeda);
+                const historico = await obterHistorico();
                 if (historico.length > 0) {
                     atualizarGrafico(historico);
                 } else {
@@ -162,8 +146,6 @@
                 document.getElementById('precoAtual').innerText = "Erro ao carregar dados.";
             }
         }
-
-        document.getElementById('moeda').addEventListener('change', atualizarCotacao);
 
         // Inicialização
         atualizarCotacao();
